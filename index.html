@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blackjack Showdown Animado</title>
+  <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+  <style>
+    /* Estilos simples para simular a mesa de blackjack */
+    body { background-color: #1f2937; color: #f9fafb; font-family: sans-serif; }
+    .mesa { background-color: #064e3b; border: 4px solid #d4af37; border-radius: 8px; padding: 20px; margin: 20px auto; max-width: 600px; }
+    .botoes button { margin: 10px; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+    .botoes button:hover { opacity: 0.8; }
+  </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen">
+  <h1 class="text-3xl mb-4">Bem-vindo ao Blackjack Showdown Animado</h1>
+  <p class="mb-4">Instruções: Clique em "Nova Partida" para iniciar. Use os botões abaixo para "Pedir Carta" (hit) ou "Parar" (stand).</p>
+  <div class="mesa">
+    <div id="saldo" class="mb-4 text-xl">Saldo: R$ 0</div>
+    <div id="jogo" class="mb-4">Mesa de jogo</div>
+    <div class="botoes">
+      <button id="btnStart" class="bg-green-500 text-white">Nova Partida</button>
+      <button id="btnHit" class="bg-blue-500 text-white">Pedir Carta</button>
+      <button id="btnStand" class="bg-red-500 text-white">Parar</button>
+    </div>
+    <div id="resultado" class="mt-4"></div>
+  </div>
+
+  <div class="mt-8">
+    <a href="admin.html" class="text-blue-300 underline">Admin Panel</a>
+  </div>
+
+  <script>
+    const PROJECT_ID = 'code_48577b';
+
+    // Inicializa o saldo via localStorage
+    let saldo = localStorage.getItem('saldo');
+    if (saldo === null) {
+      saldo = 1000;
+      localStorage.setItem('saldo', saldo);
+    } else {
+      saldo = parseInt(saldo);
+    }
+    document.getElementById('saldo').innerText = `Saldo: R$ ${saldo}`;
+
+    // Função para atualizar o saldo na tela e localStorage
+    function atualizarSaldo(novoSaldo) {
+      localStorage.setItem('saldo', novoSaldo);
+      document.getElementById('saldo').innerText = `Saldo: R$ ${novoSaldo}`;
+    }
+
+    // Função para fazer chamadas ao backend
+    async function chamarBackend(func, bodyObj) {
+      const response = await fetch(`https://api.greb.com.br/functions/${PROJECT_ID}/${func}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyObj)
+      });
+      return response.json();
+    }
+
+    // Eventos dos botões
+    document.getElementById('btnStart').addEventListener('click', async () => {
+      const resp = await chamarBackend('process', { action: 'start' });
+      document.getElementById('resultado').innerText = 'Nova partida iniciada!';
+      // Reinicia a mesa de jogo (caso queira adicionar mais lógica)
+    });
+
+    document.getElementById('btnHit').addEventListener('click', async () => {
+      const resp = await chamarBackend('process', { action: 'hit' });
+      document.getElementById('resultado').innerText = `Carta: ${resp.card}`;
+    });
+
+    document.getElementById('btnStand').addEventListener('click', async () => {
+      const resp = await chamarBackend('process', { action: 'stand' });
+      document.getElementById('resultado').innerText = `Resultado: ${resp.result}`;
+    });
+  </script>
+</body>
+</html>
