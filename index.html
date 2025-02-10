@@ -7,12 +7,13 @@
   <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
   <style>
     body, html { margin: 0; padding: 0; height: 100%; }
-    /* Mesa de poker com fundo de feltro */
+    /* Estilo da mesa top down */
     .table-background {
       background: url('https://i.imgur.com/3ZQ3ufL.jpg') no-repeat center center;
       background-size: cover;
+      position: relative;
     }
-    /* Estilo para as cartas */
+    /* Cartas estilizadas */
     .card {
       width: 60px;
       height: 90px;
@@ -24,8 +25,9 @@
       justify-content: center;
       font-size: 1.25rem;
       font-weight: bold;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
       transition: transform 0.3s ease;
+      position: absolute;
     }
     .card-back {
       background-color: #2d2d2d;
@@ -38,57 +40,66 @@
       from { transform: translateY(-50px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
     }
+    /* Botões de ação */
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    .btn-hit { background-color: #28a745; color: white; }
+    .btn-hit:hover { background-color: #218838; }
+    .btn-stand { background-color: #dc3545; color: white; }
+    .btn-stand:hover { background-color: #c82333; }
+    /* Área de jogo: posição fixa na mesa */
+    #gameArea { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    #controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; }
+    #resultMessage { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: white; font-size: 1.5rem; text-shadow: 2px 2px 4px #000; }
+    /* Botão inicial */
+    #splash { display: flex; align-items: center; justify-content: center; height: 100%; background-color: rgba(0,0,0,0.75); }
+    #startBtn {
+      padding: 20px 40px;
+      background-color: #007bff;
+      color: white;
+      font-size: 2rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    #startBtn:hover { background-color: #0069d9; }
   </style>
 </head>
 <body class="table-background">
-  <!-- Tela Inicial (Splash) -->
-  <div id="splash" class="flex items-center justify-center h-full bg-black bg-opacity-75">
-    <button id="startBtn" class="px-8 py-4 bg-green-600 text-white text-2xl rounded-full hover:bg-green-500 transition">
-      Iniciar
-    </button>
+  <!-- Tela inicial com botão único para iniciar -->
+  <div id="splash">
+    <button id="startBtn">Iniciar</button>
   </div>
-
-  <!-- Tela de Jogo -->
-  <div id="game" class="hidden h-full w-full flex flex-col justify-between p-4">
-    <!-- Exibição do Saldo -->
-    <div class="text-white text-xl">
+  
+  <!-- Área do jogo -->
+  <div id="gameArea">
+    <div id="resultMessage"></div>
+    <!-- Exibição do saldo no canto superior esquerdo -->
+    <div style="position: absolute; top: 20px; left: 20px; color: white; font-size: 1.25rem; text-shadow: 1px 1px 3px #000;">
       Saldo: R$ <span id="saldoDisplay"></span>
     </div>
-    
-    <!-- Área do Dealer (Cartas do Oponente, a primeira fica oculta) -->
-    <div class="flex justify-center mt-4">
-      <div id="dealerArea" class="flex space-x-4">
-        <!-- Cartas do dealer serão inseridas aqui -->
-      </div>
-    </div>
-
-    <!-- Centro da Mesa (logo ou título) -->
-    <div class="flex-1 flex items-center justify-center">
-      <div class="w-96 h-96 rounded-full bg-green-800 bg-opacity-75 flex items-center justify-center">
-        <h1 class="text-4xl text-yellow-300 font-bold">Blackjack Showdown</h1>
-      </div>
-    </div>
-
-    <!-- Área do Jogador (Suas cartas) -->
-    <div class="flex justify-center mb-4">
-      <div id="playerArea" class="flex space-x-4">
-        <!-- Cartas do jogador serão inseridas aqui -->
-      </div>
-    </div>
-
-    <!-- Botões de Ação -->
-    <div class="flex justify-center space-x-8 mb-4">
-      <button id="btnNewGame" class="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-500 transition">Nova Partida</button>
-      <button id="btnHit" class="px-6 py-3 bg-green-600 text-white rounded hover:bg-green-500 transition">Pedir Carta</button>
-      <button id="btnStand" class="px-6 py-3 bg-red-600 text-white rounded hover:bg-red-500 transition">Parar</button>
+    <!-- Área das cartas do jogador -->
+    <div id="playerArea"></div>
+    <!-- Área do dealer (cartas inicialmente ocultas) -->
+    <div id="dealerArea"></div>
+    <!-- Botões de ação: apenas Pedir Carta e Parar -->
+    <div id="controls">
+      <button id="btnHit" class="btn btn-hit">Pedir Carta</button>
+      <button id="btnStand" class="btn btn-stand">Parar</button>
     </div>
   </div>
-
+  
   <script>
-    // Estrutura do projeto
     const PROJECT_ID = 'code_48577b';
 
-    // Inicialização do saldo via localStorage
+    // Inicializa ou recupera o saldo no localStorage, valor padrão de 1000
     let saldo = localStorage.getItem('saldo');
     if (saldo === null) {
       saldo = 1000;
@@ -101,19 +112,25 @@
 
     // Variáveis de estado do jogo
     let playerCards = [];
-    let dealerCards = [];
+    let totalBet = 5; // aposta inicial de R$5
+    let gameActive = false;
 
     // Elementos do DOM
     const splash = document.getElementById('splash');
-    const game = document.getElementById('game');
-    const startBtn = document.getElementById('startBtn');
+    const gameArea = document.getElementById('gameArea');
     const playerArea = document.getElementById('playerArea');
     const dealerArea = document.getElementById('dealerArea');
+    const btnHit = document.getElementById('btnHit');
+    const btnStand = document.getElementById('btnStand');
+    const resultMessage = document.getElementById('resultMessage');
+    const startBtn = document.getElementById('startBtn');
 
-    // Função para criar elementos de carta
-    function createCardElement(value, faceUp = true) {
+    // Função para criar elementos de carta com posição relativa
+    function createCardElement(value, top, left, faceUp = true) {
       const card = document.createElement('div');
       card.classList.add('card', 'animate-card');
+      card.style.top = top + 'px';
+      card.style.left = left + 'px';
       card.innerText = faceUp ? value : '';
       if (!faceUp) {
         card.classList.add('card-back');
@@ -121,20 +138,27 @@
       return card;
     }
 
+    // Atualiza a área do jogador exibindo as cartas
     function updatePlayerArea() {
       playerArea.innerHTML = '';
-      playerCards.forEach(cardValue => {
-        const cardEl = createCardElement(cardValue, true);
+      // Distribui as cartas do jogador horizontalmente na parte inferior
+      playerCards.forEach((cardValue, index) => {
+        let left = 20 + index * 70; // espaçamento entre cartas
+        let top = window.innerHeight - 150;
+        const cardEl = createCardElement(cardValue, top, left, true);
         playerArea.appendChild(cardEl);
       });
     }
 
-    function updateDealerArea(showAll = false) {
+    // Atualiza a área do dealer: a primeira carta fica oculta até o jogo acabar
+    function updateDealerArea(showAll = false, dealerCards = []) {
       dealerArea.innerHTML = '';
       dealerCards.forEach((cardValue, index) => {
-        // A primeira carta do dealer fica oculta se não for para mostrar todas
+        let left = 20 + index * 70;
+        let top = 50;
+        // A primeira carta fica oculta se showAll for false
         const faceUp = showAll || index !== 0;
-        const cardEl = createCardElement(cardValue, faceUp);
+        const cardEl = createCardElement(cardValue, top, left, faceUp);
         dealerArea.appendChild(cardEl);
       });
     }
@@ -149,18 +173,39 @@
       return response.json();
     }
 
-    // Inicia uma nova partida
-    async function novaPartida() {
+    // Inicia o jogo: deduz R$5 e chama backend para carta inicial
+    async function iniciarJogo() {
+      // Deduz R$5 do saldo
+      if (saldo < 5) {
+        alert('Saldo insuficiente para iniciar a partida.');
+        return;
+      }
+      saldo -= 5;
+      localStorage.setItem('saldo', saldo);
+      saldoDisplay.innerText = saldo;
+
+      totalBet = 5;
       playerCards = [];
-      dealerCards = [];
+      // Chama backend para obter a carta inicial
       const resp = await chamarBackend('process', { action: 'start' });
-      // Reposição inicial visual
-      updatePlayerArea();
-      updateDealerArea();
+      if (resp.card) {
+        playerCards.push(resp.card);
+        updatePlayerArea();
+      }
+      gameActive = true;
     }
 
-    // Adiciona carta para o jogador
+    // Ao clicar em Pedir Carta, deduz mais R$5 e soma à aposta
     async function pedirCarta() {
+      if (!gameActive) return;
+      if (saldo < 5) {
+        alert('Saldo insuficiente para pedir mais cartas.');
+        return;
+      }
+      saldo -= 5;
+      localStorage.setItem('saldo', saldo);
+      saldoDisplay.innerText = saldo;
+      totalBet += 5;
       const resp = await chamarBackend('process', { action: 'hit' });
       if (resp.card) {
         playerCards.push(resp.card);
@@ -168,36 +213,46 @@
       }
     }
 
-    // Encerra a rodada, revelando as cartas do dealer
+    // Ao clicar em Parar, o jogo termina e o resultado é calculado
     async function parar() {
-      const resp = await chamarBackend('process', { action: 'stand' });
-      // Simulação da mão do dealer: se ainda não houver cartas, adiciona duas, mantendo a primeira oculta
-      if (dealerCards.length === 0) {
-        dealerCards.push('X'); // carta oculta
-        dealerCards.push(Math.random() < 0.5 ? 'K' : 'Q');
+      if (!gameActive) return;
+      const resp = await chamarBackend('process', { action: 'stop', player_cards: playerCards, total_bet: totalBet });
+      // Atualiza a área do dealer para mostrar todas as cartas
+      updateDealerArea(true, resp.dealer_cards);
+      let message = '';
+      if (resp.result === 'win') {
+        message = `Você ganhou! Sua mão: ${resp.player_total} | Dealer: ${resp.dealer_total}`;
+      } else if (resp.result === 'tie') {
+        message = `Empate! Sua mão: ${resp.player_total} | Dealer: ${resp.dealer_total}`;
+      } else {
+        message = `Você perdeu! Sua mão: ${resp.player_total} | Dealer: ${resp.dealer_total}`;
       }
-      updateDealerArea(true);
-      alert('Rodada encerrada! Resultado: ' + resp.result);
+      resultMessage.innerText = message;
+      
+      // Atualiza o saldo conforme o balance_change retornado
+      saldo += resp.balance_change;
+      localStorage.setItem('saldo', saldo);
+      saldoDisplay.innerText = saldo;
+      
+      gameActive = false;
     }
 
     // Eventos dos botões
     startBtn.addEventListener('click', () => {
-      splash.classList.add('hidden');
-      game.classList.remove('hidden');
-      // Tenta entrar em fullscreen
+      splash.style.display = 'none';
+      gameArea.style.display = 'block';
+      // Tenta ativar o fullscreen
       if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen();
       }
-      novaPartida();
+      iniciarJogo();
     });
 
-    document.getElementById('btnNewGame').addEventListener('click', () => {
-      novaPartida();
-    });
-    document.getElementById('btnHit').addEventListener('click', () => {
+    btnHit.addEventListener('click', () => {
       pedirCarta();
     });
-    document.getElementById('btnStand').addEventListener('click', () => {
+
+    btnStand.addEventListener('click', () => {
       parar();
     });
   </script>
